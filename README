@@ -1,0 +1,39 @@
+O projeto é composto por 2 arquivos: mcm_parallel.cu e generator.cpp
+
+mcm_parallel é o programa paralelo criado.
+generator.cpp é um programa utilizado para criar entradas para mcm_parallel.
+
+
+
+Para compilar os programas basta utilizar o Makefile, para limpar os dados basta rodar make clean e para rodar o benchmark de todos arquivos basta rodar make run
+
+
+
+O #define DEBUG 0 deve ser colocado como 1 para quando desejar vizualizar a matriz final como resultado, além de a melhor aprentização. Por motivos de muitas linhas necessárias para mostrar os resultados é aconselhável mander DEBUG 0, caso ainda assim deseja mudar, use um número de matrizes pequenas com dimensões pequenas e o resultado poderá ser notado mais facilmente.
+
+
+
+mcm_parallel - ENTRADA:
+
+[Numero de threads] [Numero de matrizes]
+[Dimensao das matrizes]
+
+
+[Dimensao das matrizes]: São [Numero de matrizes] + 1 numeros que representam as dimensoes das matrizes
+
+
+
+mcm_parallel - SAIDA:
+
+[Nome do arquivo] 
+[Dados do benchmark]
+
+
+
+Para executar generator basta usar: ./generator 10 2 3 > [path arquivo]
+
+generator - ENTRADA
+[Numero de matrizes] [Dimensao minima] [Dimensao maxima]
+
+
+[Dimensao min - max]: Representa o tamanho da menor e maior matriz utilizada no arquivo 

@@ -1,0 +1,39 @@
+\providecommand{\abntreprintinfo}[1]{%
+ \citeonline{#1}}
+\setlength{\labelsep}{0pt}\begin{thebibliography}{}
+\providecommand{\abntrefinfo}[3]{}
+\providecommand{\abntbstabout}[1]{}
+\abntbstabout{v-1.9.6 }
+
+\bibitem[Cormen 2009]{cormen2009introduction}
+\abntrefinfo{Cormen}{CORMEN}{2009}
+{CORMEN, T.~H. \textbf{Introduction to algorithms}. [S.l.]: MIT press, 2009.}
+
+\bibitem[Hochberg 2012]{Hochberg}
+\abntrefinfo{Hochberg}{HOCHBERG}{2012}
+{HOCHBERG, R. \textbf{Matrix Multiplication with CUDA — A basic introduction
+  to the CUDA programming model}. 2012.
+Dispon{\'\i}vel em:
+  \url{https://www.shodor.org/media/content/petascale/materials/UPModules/matrixMultiplication/moduleDocument.pdf}.
+  Acesso em: 11 Ago. 2017.}
+
+\bibitem[Lam, Rothberg e Wolf 1991]{lam1991cache}
+\abntrefinfo{Lam, Rothberg e Wolf}{LAM; ROTHBERG; WOLF}{1991}
+{LAM, M.~D.; ROTHBERG, E.~E.; WOLF, M.~E. The cache performance and
+  optimizations of blocked algorithms. In:  ACM. \textbf{ACM SIGARCH Computer
+  Architecture News}. [S.l.], 1991. v.~19, n.~2, p. 63--74.}
+
+\bibitem[Santos 2002]{santos2002curso}
+\abntrefinfo{Santos}{SANTOS}{2002}
+{SANTOS, R.~J. Um curso de geometria anal{\'\i}tica e {\'a}lgebra linear.
+\textbf{Belo Horizonte: Imprensa Universit{\'a}ria}, 2002.}
+
+\bibitem[Yong 2009]{Yong}
+\abntrefinfo{Yong}{YONG}{2009}
+{YONG, L.~Z. \textbf{Matrix Chain Multiplication with C++ code – PART 2:
+  Implementation}. 2009.
+Dispon{\'\i}vel em:
+  \url{https://bruceoutdoors.wordpress.com/2015/11/19/matrix-chain-multiplication-with-c-code-part-2-implementation/}.
+  Acesso em: 12 Jun. 2017.}
+
+\end{thebibliography}
