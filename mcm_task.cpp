@@ -20,7 +20,7 @@ typedef struct matrices{
 	int n, m, gpu;
 } mat;
 
-double rtclock() {
+double rtClock() {
 	struct timezone Tzp;
 	struct timeval Tp;
 	int stat;
@@ -55,11 +55,11 @@ float* createMatrix(int n, int m, int id) {
 	return a;
 }
 
-float* matrix_mult(float *a, float *b, int n, int r, int m) {
+float* matrixMulti(float *a, float *b, int n, int r, int m) {
 	float *c = (float*) calloc(n*m, sizeof(float));
 
 	float sum = 0;
-	for(int i = 0; i < n; i++)
+	for(int i = 0; i < n; i++) {
 		for(int j = 0; j < m; j++) {
 			for(int k = 0; k < r; k++) {
 				sum += a[(i*r)+k] * b[(k*m)+j];
@@ -70,6 +70,7 @@ float* matrix_mult(float *a, float *b, int n, int r, int m) {
 			c[(i*m)+j] = sum;
 			sum = 0;
 		}
+	}
 
 	free(a);
 	free(b);
@@ -77,28 +78,30 @@ float* matrix_mult(float *a, float *b, int n, int r, int m) {
 	return c;
 }
 
+/*
+ * @brief Multiplies matrices following best parenthesization, serial
+ */
 mat* matrixOrderMultiplication(
 	int i,
 	int j,
 	unsigned short int *bracket,
-	unsigned short int *p
-) {
+	unsigned short int *dim) {
 	mat *a, *b, *c;
 	c = (mat*) malloc(sizeof(mat));
 
 	if(i == j) {
-		c->p = createMatrix(p[i-1], p[i], i-1);
-		c->n = p[i-1];
-		c->m = p[i];
+		c->p = createMatrix(dim[i-1], dim[i], i-1);
+		c->n = dim[i-1];
+		c->m = dim[i];
 
 		return c;
 	}
 
-	a = matrixOrderMultiplication(i, bracket[i+j*(j-1)/2], bracket, p);
+	a = matrixOrderMultiplication(i, bracket[i+j*(j-1)/2], bracket, dim);
 
-	b = matrixOrderMultiplication(bracket[i+j*(j-1)/2] + 1, j, bracket, p);
+	b = matrixOrderMultiplication(bracket[i+j*(j-1)/2] + 1, j, bracket, dim);
 
-	c->p = matrix_mult(a->p, b->p, a->n, a->m, b->m);
+	c->p = matrixMulti(a->p, b->p, a->n, a->m, b->m);
 	c->n = a->n;
 	c->m = b->m;
 
@@ -108,34 +111,10 @@ mat* matrixOrderMultiplication(
 	return c;
 }
 
-void matrixChainMultiplication(unsigned short int *p, int n) {
-	float *a, *b;
-
-	a = createMatrix(p[0], p[1], 0);
-
-	b = createMatrix(p[1], p[2], 1);
-
-	a = matrix_mult(a, b, p[0], p[1], p[2]);
-
-	for(int i = 2; i < n - 1; i++) {
-		b = createMatrix(p[i], p[i+1], i);
-
-		a = matrix_mult(a, b, p[0], p[i], p[i+1]);
-	}
-
-	if(DEBUG) {
-		fprintf(output_file, "\nResult:\n");
-
-		for(int i = 0; i < p[0]; i++) {
-			for(int j = 0; j < p[n-1]; j++)
-				fprintf(output_file, "%f ", a[(i*p[n-1])+j]);
-
-			fprintf(output_file, "\n");
-		}
-	}
-}
-
-unsigned short int* matrixChainOrder(unsigned short int p[], int n) {
+/*
+ * @brief Finds best parenthesization, serial
+ */
+unsigned short int* matrixChainOrder(unsigned short int dim[], int n) {
 	unsigned long int *m =
 		(unsigned long int*) malloc(sizeof(unsigned long int)*(n+(n*(n-1))/2));
 
@@ -154,7 +133,7 @@ unsigned short int* matrixChainOrder(unsigned short int p[], int n) {
 			m[i+j*(j-1)/2] = MAX;
 
 			for(int k = i; k <= j-1; k++) {
-				q = m[i+k*(k-1)/2] + m[(k+1)+j*(j-1)/2] + p[i-1]*p[k]*p[j];
+				q = m[i+k*(k-1)/2] + m[(k+1)+j*(j-1)/2] + dim[i-1]*dim[k]*dim[j];
 
 				if(q <= m[i+j*(j-1)/2]) {
 					m[i+j*(j-1)/2] = q;
@@ -167,7 +146,7 @@ unsigned short int* matrixChainOrder(unsigned short int p[], int n) {
 	int matrix = 0;
 
 	if(DEBUG) {
-		fprintf(output_file, "Optimal Parenthesization is : ");
+		fprintf(output_file, "Optimal Parenthesization is: ");
 		printParenthesis(1, n-1, bracket, &matrix);
 	}
 
@@ -221,9 +200,9 @@ int main(int argc, char **argv) {
 		 *  Matrix Chain Multiplication Parentheses
 		 */
 
-		start = rtclock();
+		start = rtClock();
 		bracket = matrixChainOrder(dimensions, n);
-		end = rtclock();
+		end = rtClock();
 		order_s = end-start;
 		fprintf(output_file, "Matrix Chain Order -> Serial: %g\n\n", end-start);
 
@@ -235,9 +214,9 @@ int main(int argc, char **argv) {
 		mat *c = (mat*) malloc(sizeof(mat));
 
 		mult = 0;
-		start = rtclock();
+		start = rtClock();
 		c = matrixOrderMultiplication(1, n - 1, bracket, dimensions);
-		end = rtclock();
+		end = rtClock();
 		if(DEBUG) {
 			fprintf(output_file, "Result:\n");
 
