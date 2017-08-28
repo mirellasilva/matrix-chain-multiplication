@@ -20,7 +20,7 @@ typedef struct matrices{
 	int n, m, gpu;
 } mat;
 
-double rtClock() {
+double rtclock() {
 	struct timezone Tzp;
 	struct timeval Tp;
 	int stat;
@@ -158,8 +158,96 @@ unsigned short int* matrixChainOrder(unsigned short int dim[], int n) {
 	return bracket;
 }
 
+/*
+ * @brief Multiplies matrices following best parenthesization, parallel
+ */
+mat* matrixOrderMultiplicationPar(
+	int i,
+	int j,
+	unsigned short int *bracket,
+	unsigned short int *dim) {
+	mat *a, *b, *c;
+	c = (mat*) malloc(sizeof(mat));
+
+	if(i == j) {
+		c->p = createMatrix(dim[i-1], dim[i], i-1);
+		c->n = dim[i-1];
+		c->m = dim[i];
+
+		return c;
+	}
+
+	a = matrixOrderMultiplicationPar(i, bracket[i+j*(j-1)/2], bracket, dim);
+
+	b = matrixOrderMultiplicationPar(bracket[i+j*(j-1)/2] + 1, j, bracket, dim);
+
+	c->p = matrixMulti(a->p, b->p, a->n, a->m, b->m);
+	c->n = a->n;
+	c->m = b->m;
+
+	free(a);
+	free(b);
+
+	return c;
+}
+
+/*
+ * @brief Finds best parenthesization, parallel
+ */
+unsigned short int* matrixChainOrderPar(unsigned short int dim[], int n) {
+	unsigned long int *m =
+		(unsigned long int*) malloc(sizeof(unsigned long int)*(n+(n*(n-1))/2));
+
+	unsigned short int *bracket =
+		(unsigned short int*) malloc(sizeof(unsigned short int)*(n+(n*(n-1))/2));
+
+	unsigned int q;
+
+  // Create pool of threads
+  #pragma omp parallel num_threads(nt)
+  {
+    // Put zero on main diagonal
+    #pragma omp for
+		for(int i = 1; i < n; i++)
+			m[i+i*(i-1)/2] = 0;
+
+		for(int L = 2; L < n; L++) {
+      // Fill next diagonals
+      #pragma omp for
+			for(int i = 1; i < n-L+1; i++) {
+				int j = i+L-1;
+
+				m[i+j*(j-1)/2] = MAX;
+
+				for(int k = i; k <= j-1; k++) {
+					q = m[i+k*(k-1)/2] + m[(k+1)+j*(j-1)/2] + dim[i-1]*dim[k]*dim[j];
+
+					if(q <= m[i+j*(j-1)/2]) {
+						m[i+j*(j-1)/2] = q;
+						bracket[i+j*(j-1)/2] = k;
+					}
+				}
+			}
+		}
+	}
+
+	int matrix = 0;
+
+	if(DEBUG) {
+		fprintf(output_file, "Optimal Parenthesization is: ");
+		printParenthesis(1, n-1, bracket, &matrix);
+	}
+
+	if(LOG)
+		fprintf(output_file, "\nOptimal Cost is : %lu\n", m[1+(n-1)*((n-1)-1)/2]);
+
+	free(m);
+
+	return bracket;
+}
+
 int main(int argc, char **argv) {
-	double start, end, order_s, order_p, serial, parallel;
+  double start, end, order_s, order_p, mult_s, mult_p, serial, parallel;
 
 	// Create output_fileput file
 	output_file = fopen("output_fileput.dat", "w+");
@@ -193,18 +281,23 @@ int main(int argc, char **argv) {
 		}
 
 		// Create table for optimal parenthesization
-		unsigned short int *bracket =
-			(unsigned short int*) malloc(sizeof(unsigned short int)*(n+(n*(n-1))/2));
+		unsigned short int *bracket;
 
 		/*
 		 *  Matrix Chain Multiplication Parentheses
 		 */
 
-		start = rtClock();
+		start = rtclock();
 		bracket = matrixChainOrder(dimensions, n);
-		end = rtClock();
+		end = rtclock();
 		order_s = end-start;
 		fprintf(output_file, "Matrix Chain Order -> Serial: %g\n\n", end-start);
+
+		start = omp_get_wtime();
+		bracket = matrixChainOrderPar(dimensions, n);
+		end = omp_get_wtime();
+		order_p = end-start;
+		fprintf(output_file, "Matrix Chain Order -> Parallel: %g\n\n", end-start);
 
 		/*
 		 *  Multiplication with order
@@ -214,9 +307,9 @@ int main(int argc, char **argv) {
 		mat *c = (mat*) malloc(sizeof(mat));
 
 		mult = 0;
-		start = rtClock();
+		start = rtclock();
 		c = matrixOrderMultiplication(1, n - 1, bracket, dimensions);
-		end = rtClock();
+		end = rtclock();
 		if(DEBUG) {
 			fprintf(output_file, "Result:\n");
 
@@ -237,6 +330,32 @@ int main(int argc, char **argv) {
 		);
 		free(c->p);
 		free(c);
+
+		start = omp_get_wtime();
+    c = matrixOrderMultiplicationPar(1, n - 1, bracket, dimensions);
+		end = omp_get_wtime();
+    if(DEBUG){
+      fprintf(output_file, "Result:\n");
+
+      for(int i = 0; i < c->n; i++){
+        for(int j = 0; j < c->m; j++)
+          fprintf(output_file, "%f ", c->p[(i*c->m)+j]);
+
+        fprintf(output_file, "\n");
+      }
+    }
+    mult_p = end-start;
+    fprintf(output_file, "Number of multiplications: %lu\n", mult);
+    fprintf(output_file, "Matrix Chain Multiplication with optimal " \
+			"parenthesization -> Parallel: %g\n", end-start);
+
+    serial = order_s + mult_s;
+    parallel = order_p + mult_p;
+
+    fprintf(output_file, "\nSpeedup Order: %g\n", order_s/order_p);
+    fprintf(output_file, "\nSpeedup Matrix: %g\n", mult_s/mult_p);
+    fprintf(output_file, "\nSpeedup Total: %g\n", serial/parallel);
+    printf("\nSpeedup: %g\n", serial/parallel);
 
 		free(bracket);
 		fclose(in);
