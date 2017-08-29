@@ -177,10 +177,13 @@ mat* matrixOrderMultiplicationPar(
 		return c;
 	}
 
+	#pragma omp task shared(a, bracket, dim)
 	a = matrixOrderMultiplicationPar(i, bracket[i+j*(j-1)/2], bracket, dim);
 
+	#pragma omp task shared(b, bracket, dim)
 	b = matrixOrderMultiplicationPar(bracket[i+j*(j-1)/2] + 1, j, bracket, dim);
 
+	#pragma omp taskwait
 	c->p = matrixMulti(a->p, b->p, a->n, a->m, b->m);
 	c->n = a->n;
 	c->m = b->m;
@@ -303,12 +306,9 @@ int main(int argc, char **argv) {
 		 *  Multiplication with order
 		 */
 
-		// Create struct used to store c matrices
-		mat *c = (mat*) malloc(sizeof(mat));
-
 		mult = 0;
 		start = rtclock();
-		c = matrixOrderMultiplication(1, n - 1, bracket, dimensions);
+		mat *c = matrixOrderMultiplication(1, n - 1, bracket, dimensions);
 		end = rtclock();
 		if(DEBUG) {
 			fprintf(output_file, "Result:\n");
