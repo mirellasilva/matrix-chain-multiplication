@@ -1,14 +1,14 @@
-CC=nvcc
-CFLAGS=-Xcompiler "-fopenmp"
+CC=clang++
+CFLAGS="-fopenmp"
 
 all:projeto
 
 projeto:
-	$(CC) mcm_parallel.cu $(CFLAGS) -o mcm_parallel
+	$(CC) mcm_task.cpp $(CFLAGS) -o mcm_task
 	g++ generator.cpp -o generator
 
 run:projeto
-	./mcm_parallel arq1.in arq2.in arq3.in arq4.in arq5.in arq6.in
+	./mcm_task arq0.in arq1.in arq2.in arq3.in arq4.in arq5.in arq6.in
 
 clean:
-	rm mcm_parallel generator
+	rm mcm_task generator
