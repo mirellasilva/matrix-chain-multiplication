@@ -162,37 +162,53 @@ unsigned short int* matrixChainOrder(unsigned short int dim[], int n) {
 /*
  * @brief Multiplies matrices following best parenthesization, parallel
  */
-mat* matrixOrderMultiplicationPar(
+void matrixOrderMultiplicationPar(
 		int i,
 		int j,
 		unsigned short int *bracket,
-		unsigned short int *dim) {
-	mat *a, *b, *c;
-	c = (mat*) malloc(sizeof(mat));
+		unsigned short int *dim,
+		mat** results) {
+
+	int k = i-1;
+	int l = bracket[i+j*(j-1)/2];
 
 	if(i == j) {
-		c->p = createMatrix(dim[i-1], dim[i], i-1);
-		c->n = dim[i-1];
+		mat *c = (mat*) malloc(sizeof(mat));
+		c->p = createMatrix(dim[k], dim[i], k);
+		c->n = dim[k];
 		c->m = dim[i];
-
-		return c;
+		results[k] = c;
+		return;
 	}
 
-#pragma omp task shared(a, bracket, dim)
-	a = matrixOrderMultiplicationPar(i, bracket[i+j*(j-1)/2], bracket, dim);
+	if (DEBUG) {
+		printf("\ni: %d\tj: %d bracket[%d]: %d\t\ta: %d - %d, b: %d - %d", 
+				i, j, i+j*(j-1)/2, bracket[i+j*(j-1)/2], 
+				i, bracket[i+j*(j-1)/2], bracket[i+j*(j-1)/2] + 1, j);
+	}
 
-#pragma omp task shared(b, bracket, dim)
-	b = matrixOrderMultiplicationPar(bracket[i+j*(j-1)/2] + 1, j, bracket, dim);
+	matrixOrderMultiplicationPar(i, l, bracket, dim, results);
+	matrixOrderMultiplicationPar(l + 1, j, bracket, dim, results);
 
-#pragma omp taskwait
-	c->p = matrixMulti(a->p, b->p, a->n, a->m, b->m);
-	c->n = a->n;
-	c->m = b->m;
+#pragma omp task depend(in: results[l]) depend(inout: results[k]) 
+	{
 
-	free(a);
-	free(b);
+		mat *c = (mat*) malloc(sizeof(mat));
+		if (DEBUG) {
+			printf("\nmultiplying: %d * %d", k+1, l+1);
+		}	
+		mat *a, *b;
+		a = results[k];
+		b = results[l];
+		#pragma omp target map(to: a,b) map(from: c)
+		c->p = matrixMulti(a->p, b->p, a->n, a->m, b->m);
+		c->n = a->n;
+		c->m = b->m;
+		free(a);
+		free(b);
 
-	return c;
+		results[k] = c;
+	}
 }
 
 /*
@@ -296,21 +312,22 @@ int main(int argc, char **argv) {
 		bracket = matrixChainOrder(dimensions, n);
 		end = rtclock();
 		order_s = end-start;
-		fprintf(output_file, "Matrix Chain Order -> Serial: %g\n\n", end-start);
+		fprintf(output_file, "Matrix Chain Order -> Serial: %.10f\n\n", end-start);
 
 		start = omp_get_wtime();
 		bracket = matrixChainOrderPar(dimensions, n);
 		end = omp_get_wtime();
 		order_p = end-start;
-		fprintf(output_file, "Matrix Chain Order -> Parallel: %g\n\n", end-start);
+		fprintf(output_file, "Matrix Chain Order -> Parallel: %.10f\n\n", end-start);
 
 		/*
 		 *  Multiplication with order
 		 */
+		mat *c;
 
 		mult = 0;
 		start = rtclock();
-		mat *c = matrixOrderMultiplication(1, n - 1, bracket, dimensions);
+		c = matrixOrderMultiplication(1, n - 1, bracket, dimensions);
 		end = rtclock();
 		if(DEBUG) {
 			fprintf(output_file, "Result:\n");
@@ -327,15 +344,21 @@ int main(int argc, char **argv) {
 		fprintf(
 				output_file,
 				"Matrix Chain Multiplication with optimal parenthesization -> " \
-				"Serial: %g\n\n",
+				"Serial: %.10f\n\n",
 				end-start
 		       );
 		free(c->p);
 		free(c);
 
+		mult = 0;
+		mat** results = (mat**) malloc(sizeof(mat*)*n);
 		start = omp_get_wtime();
-		c = matrixOrderMultiplicationPar(1, n - 1, bracket, dimensions);
+#pragma omp parallel num_threads(nt)
+#pragma omp single nowait
+		matrixOrderMultiplicationPar(1, n-1, bracket, dimensions, results);
+#pragma omp taskwait
 		end = omp_get_wtime();
+		c = results[0];
 		if(DEBUG) {
 			fprintf(output_file, "Result:\n");
 
@@ -349,14 +372,14 @@ int main(int argc, char **argv) {
 		mult_p = end-start;
 		fprintf(output_file, "Number of multiplications: %lu\n", mult);
 		fprintf(output_file, "Matrix Chain Multiplication with optimal " \
-				"parenthesization -> Parallel: %g\n", end-start);
+				"parenthesization -> Parallel: %.10f\n", end-start);
 
 		serial = order_s + mult_s;
 		parallel = order_p + mult_p;
 
-		fprintf(output_file, "\nSpeedup Order: %g\n", order_s/order_p);
-		fprintf(output_file, "\nSpeedup Matrix: %g\n", mult_s/mult_p);
-		fprintf(output_file, "\nSpeedup Total: %g\n", serial/parallel);
+		fprintf(output_file, "\nSpeedup Order: %.2f\n", order_s/order_p);
+		fprintf(output_file, "\nSpeedup Matrix: %.2f\n", mult_s/mult_p);
+		fprintf(output_file, "\nSpeedup Total: %.2f\n", serial/parallel);
 		printf("\nSpeedup: %g\n\n", serial/parallel);
 
 		free(bracket);
