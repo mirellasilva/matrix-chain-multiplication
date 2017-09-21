@@ -8,7 +8,7 @@ projeto:
 	g++ generator.cpp -o generator
 
 run:projeto
-	./mcm_task arq0.in arq1.in arq2.in arq3.in arq4.in arq5.in arq6.in
+	./mcm_task arq1.in arq2.in arq3.in arq4.in arq5.in arq6.in arq10.in
 
 clean:
 	rm mcm_task generator
